@@ -37,7 +37,6 @@ export PYTHONPATH=$PYTHONPATH:$(PWD)
 export PROJECT_NAME={{ cookiecutter.project_slug }}
 export IMAGE_NAME=$(PROJECT_NAME)-image
 export CONTAINER_NAME=$(PROJECT_NAME)-container
-export DATA_SOURCE={{ cookiecutter.data_source }}
 export JUPYTER_HOST_PORT={{ cookiecutter.jupyter_host_port }}
 export JUPYTER_CONTAINER_PORT=8888
 export PYTHON=python3
@@ -55,28 +54,10 @@ export DOCKERFILE=docker/Dockerfile
 help:
 	@$(PYTHON) -c "$$PRINT_HELP_PYSCRIPT" < $(MAKEFILE_LIST)
 
-init: init-docker sync-from-source ## initialize repository for traning
-
-sync-from-source: ## download data data source to local envrionment
-{%- if cookiecutter.data_source_type == 's3' %}
-	-aws s3 sync $(DATA_SOURCE) ./data/
-{%- elif cookiecutter.data_source_type == 'nfs' %}
-	cp -r $(DATA_SOURCE)/* ./data/
-{%- elif cookiecutter.data_source_type == 'url' %}
-	wget $(DATA_SOURCE) -P ./data/
-{% endif %}
+init: init-docker ## initialize repository for traning
 
 init-docker: ## initialize docker image
 	$(DOCKER) build -t $(IMAGE_NAME) -f $(DOCKERFILE) --build-arg UID=$(shell id -u) .
-
-sync-to-source: ## sync local data to data source
-{%- if cookiecutter.data_source_type == 's3' %}
-	-aws s3 sync ./data/ $(DATA_SOURCE)
-{%- elif cookiecutter.data_source_type == 'nfs' %}
-	cp -r ./data/* $(DATA_SOURCE)/
-{%- elif cookiecutter.data_source_type == 'url' %}
-	echo "no sync target for url data source..."
-{% endif %}
 
 create-container: ## create docker container
 	$(DOCKER) run -it -v $(PWD):/work -p $(JUPYTER_HOST_PORT):$(JUPYTER_CONTAINER_PORT) --name $(CONTAINER_NAME) $(IMAGE_NAME)
@@ -99,7 +80,6 @@ profile: ## show profile of the project
 	@echo "CONTAINER_NAME: $(CONTAINER_NAME)"
 	@echo "IMAGE_NAME: $(IMAGE_NAME)"
 	@echo "JUPYTER_PORT: `$(DOCKER) port $(CONTAINER_NAME)`"
-	@echo "DATA_SOURE: $(DATA_SOURCE)"
 
 clean: clean-model clean-pyc clean-docker ## remove all artifacts
 
